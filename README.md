@@ -14,6 +14,7 @@ These scripts attempt to:
   
   <b>AddMerakiVPN_Prompts.ps1:</b> Handy when you administer multiple Meraki client VPNs, such as at an MSP's help desk.    
     It will prompt for:
+    
     1. VPN connection name.
         A new name will create a new connection. An existing name prompts for permission to delete and recreate.
     2. VPN concentrator address
