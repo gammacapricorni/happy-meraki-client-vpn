@@ -53,8 +53,7 @@ Add-Vpnconnectionroute -Connectionname $ConnectionName -AllUserConnection -Desti
 # Start-Sleep -m 100
 # Add-Vpnconnectionroute -Connectionname $ConnectionName -AllUserConnection -DestinationPrefix $Destination15
 
-# Set public RASPhone.pbk so that the Windows credential is used to
-# authenticate to servers.
+# Set RASPhone.pbk so that the Windows credential is used to authenticate to servers.
 # Important when you use Meraki cloud credentials.
 (Get-Content -path $PbkPath -Raw) -Replace 'UseRasCredentials=1','UseRasCredentials=0' | Set-Content -pat $PbkPath
 
