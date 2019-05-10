@@ -12,8 +12,17 @@ $PresharedKey = 'fake PSK'
 # Placeholder will be overwritten when new VPN is created.
 # Change $env:PROGRAMDATA to $env:APPDATA if not creating an AllUserConnection.
 If ((Test-Path $PbkPath) -eq $false) {
-    $PbkFolder = Join-Path $env:PROGRAMDATA "Microsoft\Network\Connections\Pbk\"
-    New-Item -path $PbkFolder -name "rasphone.Pbk" -ItemType "file" -Force -EA SilentlyContinue
+    $PbkFolder = Join-Path $env:PROGRAMDATA "Microsoft\Network\Connections\pbk\"
+    # Check if pbk folder actually exists. If it does, create place-holder phonebook.
+    if ((Test-Path $PbkFolder) -eq $true){
+        New-Item -path $PbkFolder -name "rasphone.pbk" -ItemType "file" | Out-Null
+    }
+    # If pbk folder doesn't exist, make folder then make place-holder phonebook.
+    else{
+        $ConnectionFolder = Join-Path $env:PROGRAMDATA "Microsoft\Network\Connections\"
+        New-Item -path $ConnectionFolder -name "pbk" -ItemType "directory" | Out-Null
+        New-Item -path $PbkFolder -name "rasphone.pbk" -ItemType "file" | Out-Null
+    }
 }
 
 # If VPN exists, delete VPN connection
