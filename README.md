@@ -3,8 +3,6 @@ PowerShell scripts for setting up Meraki Client VPN on Windows 10
 
 Windows 10 doesn't like to play nice with the Meraki client VPN, especially when following Meraki's own setup instructions.
 
-These default 
-
 These scripts attempt to:
   1. Pre-emptively fix issues with NAT-Traversal. Commonly pops up when clients use cellphone hotspots.
   2. Simplify creating a split tunnel connection.
