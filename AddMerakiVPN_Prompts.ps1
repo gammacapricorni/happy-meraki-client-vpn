@@ -7,22 +7,20 @@ $Subnets = @()
 $AddRouteCheck = "`nAdd another route? (y/n)"
 
 # Phonebook path for all user connections.
-# Change $env:PROGRAMDATA to $env:APPDATA if not create an AllUserConnection.
-$PbkPath = Join-Path $env:PROGRAMDATA "Microsoft\Network\Connections\Pbk\rasphone.pbk"
+# Change $env:PROGRAMDATA to $env:APPDATA for single user connection.
+$PbkPath = "$env:PROGRAMDATA\Microsoft\Network\Connections\Pbk\rasphone.pbk"
 
 # If no VPNs, rasphone.pbk may not already exist
 # If file does not exist, then create an empty placeholder.
 # Placeholder will be overwritten when new VPN is created.
-# Change $env:PROGRAMDATA to $env:APPDATA if not creating an AllUserConnection.
+# Change $env:PROGRAMDATA to $env:APPDATA for single user connection
 If ((Test-Path $PbkPath) -eq $false) {
-    $PbkFolder = Join-Path $env:PROGRAMDATA "Microsoft\Network\Connections\pbk\"
-    # Check if pbk folder actually exists. If it does, create place-holder phonebook.
+    $PbkFolder = "$env:PROGRAMDATA\Microsoft\Network\Connections\pbk\"
     if ((Test-Path $PbkFolder) -eq $true){
         New-Item -path $PbkFolder -name "rasphone.pbk" -ItemType "file" | Out-Null
     }
-    # If pbk folder doesn't exist, make folder then make place-holder phonebook.
     else{
-        $ConnectionFolder = Join-Path $env:PROGRAMDATA "Microsoft\Network\Connections\"
+        $ConnectionFolder = "$env:PROGRAMDATA\Microsoft\Network\Connections\"
         New-Item -path $ConnectionFolder -name "pbk" -ItemType "directory" | Out-Null
         New-Item -path $PbkFolder -name "rasphone.pbk" -ItemType "file" | Out-Null
     }
@@ -71,7 +69,7 @@ Do {
 } While ($ServerAddress -eq "")
 
 Do {
-    $PresharedKey = Read-Host -Prompt "`nPre-shared key"
+    $PresharedKey = Read-Host -AsSecureString -Prompt "`nPre-shared key"
     Start-Sleep -m 100
 } While ($PresharedKey -eq "")
 
@@ -152,6 +150,7 @@ If ($SplitCheck -eq "y") {
 # Provides a static box for end users to type user name/password into
 # Avoids Windows 10 overlay problems such as showing "Connecting..." even
 # after a successful connection.
+# Change $ShortcutFile to "$env:Homepath" for single user connection
 Try {
     $ShortcutFile = "$env:Public\Desktop\$ConnectionName.lnk"
     $WScriptShell = New-Object -ComObject WScript.Shell
@@ -160,7 +159,7 @@ Try {
     $Shortcut.Arguments = "-d `"$ConnectionName`""
     $ShortCut.WorkingDirectory = "$env:SystemRoot\System32\"
     $Shortcut.Save()
-    Write-Host -ForegroundColor Yellow "`nCreated VPN shortcut on desktop for all users."
+    Write-Host -ForegroundColor Yellow "`nCreated VPN shortcut on desktop for all users. Remind customer to use that short cut!"
 }
 Catch {
     Write-Host -ForegroundColor Red "`nUnable to create VPN shortcut."
