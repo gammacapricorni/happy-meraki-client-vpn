@@ -69,13 +69,9 @@ Do {
 } While ($ServerAddress -eq "")
 
 Do {
-    $SecurePresharedKey = Read-Host -AsSecureString -Prompt "`nPre-shared key"
+    $PresharedKey = Read-Host -Prompt "`nPre-shared key"
     Start-Sleep -m 100
-} While ($SecurePresharedKey -eq "")
-
-# Convert secure string to plain String
-$BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePresharedKey)
-$PresharedKey = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+} While ($PresharedKey -eq "")
 
 # Create the saved VPN connection for all users on the PC
 # Suppress error regarding PAP
