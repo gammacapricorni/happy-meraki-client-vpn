@@ -1,4 +1,4 @@
-# happy-meraki-client-vpn
+# Better Meraki Client VPN
 PowerShell scripts for setting up Meraki Client VPN on Windows 10
 
 Windows 10 doesn't like to play nice with the Meraki client VPN, especially when following Meraki's own setup instructions.
