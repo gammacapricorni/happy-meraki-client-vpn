@@ -81,6 +81,6 @@ $Shortcut.Save()
 # See https://documentation.meraki.com/MX/Client_VPN/Troubleshooting_Client_VPN#Windows_Error_809
 # for more details
 $registryPath = "HKLM:\SYSTEM\CurrentControlSet\Services\PolicyAgent"
-$Name = "AssumeUDPEncapsulationContextOnSendRule"
+$name = "AssumeUDPEncapsulationContextOnSendRule"
 $value = "2"
 New-ItemProperty -Path $registryPath -Name $name -Value $value -PropertyType DWORD -Force | Out-Null
