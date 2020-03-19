@@ -33,6 +33,7 @@ Add-VpnConnection -Name $ConnectionName -ServerAddress $ServerAddress -AllUserCo
 
 # Sets the VPN connection to split tunnel
 # Comment out for full tunnel
+# Short rest as some PCs throw tantrums if you don't.
 Start-Sleep -m 100
 Set-VpnConnection -Name $ConnectionName -SplitTunneling $True -AllUserConnection -WA SilentlyContinue
 
@@ -41,6 +42,7 @@ Set-VpnConnection -Name $ConnectionName -SplitTunneling $True -AllUserConnection
 
 # Adds the route for the interesting subnet
 # $Destination should equal the interesting subnet with CIDR mask
+# Yes this should be an array and loop. Can't change this during the VPNpocalypse.
 # Comment out for full tunnel
 $Destination = '192.168.100.0/24'
 Add-Vpnconnectionroute -Connectionname $ConnectionName -AllUserConnection -DestinationPrefix $Destination
