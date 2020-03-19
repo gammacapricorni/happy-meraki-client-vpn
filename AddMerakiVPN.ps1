@@ -43,7 +43,6 @@ Set-VpnConnection -Name $ConnectionName -SplitTunneling $True -AllUserConnection
 # $Destination should equal the interesting subnet with CIDR mask
 # Comment out for full tunnel
 $Destination = '192.168.100.0/24'
-Start-Sleep -m 100
 Add-Vpnconnectionroute -Connectionname $ConnectionName -AllUserConnection -DestinationPrefix $Destination
 
 # If there is more than one subnet for the client VPN on the destination network
