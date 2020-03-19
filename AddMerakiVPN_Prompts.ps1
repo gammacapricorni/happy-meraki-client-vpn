@@ -42,7 +42,6 @@ If ($VpnExists -eq $True) {
     Do {
         # Ask to overwrite
         $Continue = Read-Host -Prompt "`nVPN already exists. Overwrite? (y/n)"
-        Start-Sleep -m 100
         Switch ($Continue) {
             'y' {
                 Try {
@@ -65,12 +64,10 @@ If ($VpnExists -eq $True) {
 # Prefer Meraki dynamic FQDN for VPN concentrator.
 Do {
     $ServerAddress = Read-Host -Prompt "`nHost name or IP address"
-    Start-Sleep -m 100
 } While ($ServerAddress -eq "")
 
 Do {
     $PresharedKey = Read-Host -Prompt "`nPre-shared key"
-    Start-Sleep -m 100
 } While ($PresharedKey -eq "")
 
 # Create the saved VPN connection for all users on the PC
@@ -81,7 +78,6 @@ Write-Host -ForegroundColor Yellow "`nCreated VPN connection for $ConnectionName
 # Ask if split or full tunnel
 Do {
     $SplitCheck = Read-Host -Prompt "`nSplit tunnel? (y/n)"
-    Start-Sleep -m 100
     # Prompt for VPN subnet. Ask to confirm. Try to add. Ask to add more routes.
     Switch ($SplitCheck) {
         'y' {
@@ -106,13 +102,11 @@ If ($SplitCheck -eq "y") {
             # Loop until non-blank result given
             Do {
                 $Holder = Read-Host -Prompt "`nVPN Subnet"
-                Start-Sleep -m 200
             } Until ($Holder -ne "")
 
             # Prompt user to review and approve route
             Do {
                 $RouteCheck = Read-Host -Prompt "`nAdd subnet $Holder (y/n)"
-                Start-Sleep -m 100
             } Until ($RouteCheck -eq "n" -or $RouteCheck -eq "y")
 
             # If route is approved, try to add
@@ -133,7 +127,6 @@ If ($SplitCheck -eq "y") {
             # Prompt to add another route
             Do {
                 $MoreRoutes = Read-Host -Prompt "$AddRouteCheck"
-                Start-Sleep -m 100
             } Until ($MoreRoutes -eq "y" -or $MoreRoutes -eq "n")
         # End loop after no more routes
         } While ($MoreRoutes -eq "y")
@@ -169,10 +162,11 @@ Catch {
 # See https://documentation.meraki.com/MX/Client_VPN/Troubleshooting_Client_VPN#Windows_Error_809
 # for more details
 $registryPath = "HKLM:\SYSTEM\CurrentControlSet\Services\PolicyAgent"
-$Name = "AssumeUDPEncapsulationContextOnSendRule"
+$name = "AssumeUDPEncapsulationContextOnSendRule"
 $value = "2"
 Try {
     New-ItemProperty -Path $registryPath -Name $name -Value $value -PropertyType DWORD -Force | Out-Null
+    Write-Host -ForegroundColor Yellow "`nIf this is the first time this Meraki VPN script has been run, reboot computer to finish setup."
 }
 Catch {
     Write-Host -ForegroundColor Red "`nUnable to create registry key."
