@@ -1,5 +1,10 @@
-﻿# Path for the public phonebook. Used as this is an all users connection.
-# Change $env:PROGRAMDATA to $env:APPDATA if not creating an AllUserConnection.
+# By default, this script creates an -AllUserConnection in the public phonebook
+# To make a single user connection, find and replace:
+#   Remove -AllUserConnection
+#   Change $env:PROGRAMDATA to $env:APPDATA
+#   Change $env:Public to "$env:Homepath"
+
+﻿# Path for the phonebook.
 $PbkPath = Join-Path $env:PROGRAMDATA 'Microsoft\Network\Connections\Pbk\rasphone.Pbk'
 
 # Update these variables with the actual VPN name, address, and PSK.
@@ -7,17 +12,14 @@ $ConnectionName = 'VPN name'
 $ServerAddress = 'pretend.host.com'
 $PresharedKey = 'fake PSK'
 
-# If no VPNs, rasphone.Pbk may not already exist
+# If no VPNs, rasphone.Pbk may not already exist.
 # If file does not exist, then create an empty placeholder.
 # Placeholder will be overwritten when new VPN is created.
-# Change $env:PROGRAMDATA to $env:APPDATA if not creating an AllUserConnection.
 If ((Test-Path $PbkPath) -eq $false) {
     $PbkFolder = Join-Path $env:PROGRAMDATA "Microsoft\Network\Connections\pbk\"
-    # Check if pbk folder actually exists. If it does, create place-holder phonebook.
     if ((Test-Path $PbkFolder) -eq $true){
         New-Item -path $PbkFolder -name "rasphone.pbk" -ItemType "file" | Out-Null
     }
-    # If pbk folder doesn't exist, make folder then make place-holder phonebook.
     else{
         $ConnectionFolder = Join-Path $env:PROGRAMDATA "Microsoft\Network\Connections\"
         New-Item -path $ConnectionFolder -name "pbk" -ItemType "directory" | Out-Null
@@ -25,52 +27,85 @@ If ((Test-Path $PbkPath) -eq $false) {
     }
 }
 
-# If VPN exists, delete VPN connection
+# If VPN exists, delete VPN connection so you can build fresh.
 Remove-VpnConnection -AllUserConnection -Name $ConnectionName -Force -EA SilentlyContinue
 
 # Adds the new VPN connection.
 Add-VpnConnection -Name $ConnectionName -ServerAddress $ServerAddress -AllUserConnection -TunnelType L2tp -L2tpPsk $PresharedKey -AuthenticationMethod Pap -EncryptionLevel Optional -Force -WA SilentlyContinue
 
-# Sets the VPN connection to split tunnel
-# Comment out for full tunnel
-# Short rest as some PCs throw tantrums if you don't.
+# Sets the VPN connection to split tunnel.
+# Comment out for full tunnel.
+# Note: Some PCs get angry w/o a short rest to process Add-VPNConnection
 Start-Sleep -m 100
 Set-VpnConnection -Name $ConnectionName -SplitTunneling $True -AllUserConnection -WA SilentlyContinue
 
-# If you need parameters to add metrics or for IPv6 subnets, open Powershell and run: get-help add-vpnconnectionroute -full
-# This will give the full list of valid parameters for Add-Vpnconnectionroute and instructions for using them
+# If you need parameters to add metrics or for IPv6 subnets, open Powershell and run:
+# get-help add-vpnconnectionroute -full
+# This will give the full list of valid parameters for Add-Vpnconnectionroute and
+# instructions for using them.
 
 # Adds the route for the interesting subnet
-# $Destination should equal the interesting subnet with CIDR mask
-# Yes this should be an array and loop. Can't change this during the VPNpocalypse.
-# Comment out for full tunnel
-$Destination = '192.168.100.0/24'
-Add-Vpnconnectionroute -Connectionname $ConnectionName -AllUserConnection -DestinationPrefix $Destination
+# $RouteList is an array of interesting subnet(s) with CIDR mask
+# Split tunnels must have at least one route.
+# Comment out for full tunnel.
 
-# If there is more than one subnet for the client VPN on the destination network
-# then we need an additional route for each subnet.
-#
-# Create an additional Destination# variable for each subnet
-# Repeat the start-sleep and Add-Vpnconnectionroute lines once for each subnet.
-# Update variable after -DestinationPrefix to match your new variable.
-#
-# You could make a loop for adding routes. My typical use case only has 1-2
-# subnets though so...
-#
-# Remove # from lines below to use the code.
-#
-# $Destination15 = '192.168.15.0/24'
-# Start-Sleep -m 100
-# Add-Vpnconnectionroute -Connectionname $ConnectionName -AllUserConnection -DestinationPrefix $Destination15
+$RouteList = @('10.0.1.0/24', '10.1.0.0/16', '10.2.0.0/16')
+Foreach ($Destination in $RouteList)
+{
+    Add-Vpnconnectionroute -Connectionname $ConnectionName -AllUserConnection -DestinationPrefix $Destination
+}
 
-# Set RASPhone.pbk so that the Windows credential is used to authenticate to servers.
-# Important when you use Meraki cloud credentials.
-(Get-Content -path $PbkPath -Raw) -Replace 'UseRasCredentials=1','UseRasCredentials=0' | Set-Content -pat $PbkPath
+# Load the RASphone.pbk file into a line-by-line array
+$Phonebook = (Get-Content -path $PbkPath)
 
-# Create desktop shortcut for all users using rasphone.exe
-# Provides a static box for end users to type user name/password into
+# Index for line where the connection starts.
+$ConnectionIndex = 0
+
+# Locate the array index for the [$ConnectionName] saved connection.
+# Ensures that we only edit settings for this particular connection.
+for ($counter=0; $counter -lt $Phonebook.Length; $counter++){
+    if($Phonebook[$counter] -eq "[$ConnectionName]"){
+        # Set $ConnectionIndex var since $counter only exists inside loop
+        $ConnectionIndex = $counter
+        break
+    }
+}
+
+# Starting at the $ConnectionName connection:
+# 1. Set connection to use Windows Credential (UseRasCredentials=1)
+# 2. Force client to use VPN-provided DNS first (IpInterfaceMetric=1)
+
+# Setting the IpInterfaceMetric to 1 will force the PC to use that DNS first.
+# Some companies have local domains that overlap with valid domains
+# on the Internet. If VPN-provided DNS can resolve names on the local domain,
+# then end user PC will get the correct IP addresses for private servers.
+# Otherwise, the PC will use a public DNS resolver.
+
+for($counter=$ConnectionIndex; $counter -lt $Phonebook.Length; $counter++){
+    # Set RASPhone.pbk so that the Windows credential is used to
+    # authenticate to servers.
+    if($Phonebook[$counter] -eq "UseRasCredentials=1"){
+        $Phonebook[$counter] = "UseRasCredentials=0"
+    }
+
+    # Set RASPhone.pbk so that VPN adapters are highest priority for routing traffic.
+    # Comment out if you don't want to try VPN-provided DNS first.
+    elseif($Phonebook[$counter] -eq "IpInterfaceMetric=0"){
+        $Phonebook[$counter] = "IpInterfaceMetric=1"
+        break
+        # IpInterfaceMetric comes after UseRasCredentials, so break will cancel
+        #   our loop once we're done with it.
+    }
+}
+
+# Save modified phonebook overtop of RASphone.pbk
+Set-Content -Path $PbkPath -Value $Phonebook
+
+# Create desktop shortcut using rasphone.exe.
+# Provides a static box for end users to type user name/password into.
 # Avoids Windows 10 overlay problems such as showing "Connecting..." even
 # after a successful connection.
+
 $ShortcutFile = "$env:Public\Desktop\$ConnectionName.lnk"
 $WScriptShell = New-Object -ComObject WScript.Shell
 $Shortcut = $WScriptShell.CreateShortcut($ShortcutFile)
