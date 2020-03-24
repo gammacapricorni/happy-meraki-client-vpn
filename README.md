@@ -9,6 +9,7 @@ These scripts attempt to:
   3. Prevent Windows from authenticating to network resources with the VPN credential.
   4. Create a rasphone desktop shortcut. It seems to behave better, and users find it easier to enter credentials into.
   5. Create the connection for all users. Especially useful for shared laptops or users prone to Windows user profile corruption.
+  6. Set the VPN interface's metric to 1, so that the PC will use the VPN's DNS preferentially. Avoids problems where the local domain is the same as a public domain.
 
 TIP: Remind your end users to not save their VPN password. Saving credentials can trigger the password protocol to change.
 
