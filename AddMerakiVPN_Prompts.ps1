@@ -1,4 +1,10 @@
-#Remove RunAsAdministrator if not making an AllUserConnection
+# By default, this script creates an -AllUserConnection in the public phonebook
+# To make a single user connection, do the following:
+#   Remove Requires - RunAsAdministrator
+#   Remove -AllUserConnection
+#   Change $env:PROGRAMDATA to $env:APPDATA
+#   Change $env:Public to "$env:Homepath"
+
 #Requires -RunAsAdministrator
 
 # Declare each variable for tidiness.
@@ -7,13 +13,12 @@ $Subnets = @()
 $AddRouteCheck = "`nAdd another route? (y/n)"
 
 # Phonebook path for all user connections.
-# Change $env:PROGRAMDATA to $env:APPDATA for single user connection.
 $PbkPath = "$env:PROGRAMDATA\Microsoft\Network\Connections\Pbk\rasphone.pbk"
 
 # If no VPNs, rasphone.pbk may not already exist
 # If file does not exist, then create an empty placeholder.
+
 # Placeholder will be overwritten when new VPN is created.
-# Change $env:PROGRAMDATA to $env:APPDATA for single user connection
 If ((Test-Path $PbkPath) -eq $false) {
     $PbkFolder = "$env:PROGRAMDATA\Microsoft\Network\Connections\pbk\"
     if ((Test-Path $PbkFolder) -eq $true){
@@ -29,12 +34,12 @@ If ((Test-Path $PbkPath) -eq $false) {
 # Reminder so looping prompts doesn't confuse help desk.
 Write-Host -ForegroundColor Yellow "Prompts will loop until you enter a valid response."
 
-# Get VPN connection name
+# Get VPN connection name.
 Do {
     $ConnectionName = Read-Host -Prompt "`nName of VPN Connection"
 } While ($ConnectionName -eq "")
 
-# Check if matching VPN already exists
+# Check if matching VPN already exists.
 $VpnExists = (Get-Content $PbkPath | Select-String -Pattern $ConnectionName -Quiet)
 
 # If VPN exists
@@ -61,7 +66,8 @@ If ($VpnExists -eq $True) {
     } Until ($Continue -eq "n" -or $Continue -eq "y")
 }
 
-# Prefer Meraki dynamic FQDN for VPN concentrator.
+# Use either Meraki dynamic DNS OR a CNAME record of Meraki DDNS for 'host name'.
+# Then if IP changes, you don't have to update PCs.
 Do {
     $ServerAddress = Read-Host -Prompt "`nHost name or IP address"
 } While ($ServerAddress -eq "")
@@ -70,8 +76,8 @@ Do {
     $PresharedKey = Read-Host -Prompt "`nPre-shared key"
 } While ($PresharedKey -eq "")
 
-# Create the saved VPN connection for all users on the PC
-# Suppress error regarding PAP
+# Create the saved VPN connection.
+# Suppress error regarding PAP.
 Add-VpnConnection -Name $ConnectionName -ServerAddress $ServerAddress -AllUserConnection -TunnelType L2tp -L2tpPsk $PresharedKey -AuthenticationMethod Pap -EncryptionLevel Optional -Force -WA SilentlyContinue
 Write-Host -ForegroundColor Yellow "`nCreated VPN connection for $ConnectionName"
 
@@ -135,15 +141,52 @@ If ($SplitCheck -eq "y") {
     } Until ($Subnets.count -ge 1)
 }
 
-# Set public RASPhone.pbk so that the Windows credential is used to
-# authenticate to servers.
-(Get-Content -path $PbkPath -Raw) -Replace "UseRasCredentials=1","UseRasCredentials=0" | Set-Content -path $PbkPath
+# Load the RASphone.pbk file into a line-by-line array
+$Phonebook = (Get-Content -path $PbkPath)
+
+# Index for line where the connection starts.
+$ConnectionIndex = 0
+
+# Locate the array index for the [$ConnectionName] saved connection.
+# Ensures that we only edit settings for this particular connection.
+for ($counter=0; $counter -lt $Phonebook.Length; $counter++){
+    if($Phonebook[$counter] -eq "[$ConnectionName]"){
+        # Set $ConnectionIndex var since $counter only exists inside loop
+        $ConnectionIndex = $counter
+        # Break since we've got our index now
+        break
+    }
+}
+
+# Starting at the $ConnectionName connection:
+# 1. Set connection to use Windows Credential (UseRasCredentials)
+# 2. Force client to use VPN-provided DNS first (IpInterfaceMetric)
+#      Some companies have local domains that overlap with valid domains
+#        on the Internet. If VPN-provided DNS can resolve names on the local domain,
+#        then end user PC will get the correct IP addresses for private servers.
+
+for($counter=$ConnectionIndex; $counter -lt $Phonebook.Length; $counter++){
+    # Set RASPhone.pbk so that the Windows credential is used to
+    # authenticate to servers.
+    if($Phonebook[$counter] -eq "UseRasCredentials=1"){
+        $Phonebook[$counter] = "UseRasCredentials=0"
+    }
+
+    # Set RASPhone.pbk so that VPN adapters are highest priority for routing traffic.
+    # Comment out if you don't want to use VPN-provided DNS for Internet domains.
+    elseif($Phonebook[$counter] -eq "IpInterfaceMetric=0"){
+        $Phonebook[$counter] = "IpInterfaceMetric=1"
+        break
+    }
+}
+
+# Save modified phonebook overtop of RASphone.pbk
+Set-Content -Path $PbkPath -Value $Phonebook
 
 # Create desktop shortcut for all users using rasphone.exe
 # Provides a static box for end users to type user name/password into
 # Avoids Windows 10 overlay problems such as showing "Connecting..." even
 # after a successful connection.
-# Change $ShortcutFile to "$env:Homepath" for single user connection
 Try {
     $ShortcutFile = "$env:Public\Desktop\$ConnectionName.lnk"
     $WScriptShell = New-Object -ComObject WScript.Shell
@@ -166,7 +209,7 @@ $name = "AssumeUDPEncapsulationContextOnSendRule"
 $value = "2"
 Try {
     New-ItemProperty -Path $registryPath -Name $name -Value $value -PropertyType DWORD -Force | Out-Null
-    Write-Host -ForegroundColor Yellow "`nIf this is the first time this Meraki VPN script has been run, reboot computer to finish setup."
+    Write-Host -ForegroundColor Yellow "`nIf this is the first time a Meraki VPN has been setup, reboot computer to finish setup."
 }
 Catch {
     Write-Host -ForegroundColor Red "`nUnable to create registry key."
