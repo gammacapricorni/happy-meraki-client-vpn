@@ -1,3 +1,4 @@
+# Author: Nash King
 # By default, this script creates an -AllUserConnection in the public phonebook
 # To make a single user connection, find and replace:
 #   Remove -AllUserConnection
