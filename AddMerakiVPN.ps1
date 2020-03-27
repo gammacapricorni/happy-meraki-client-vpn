@@ -5,7 +5,7 @@
 #   Change $env:PROGRAMDATA to $env:APPDATA
 #   Change $env:Public to "$env:Homepath"
 
-﻿# Path for the phonebook.
+# Path for the phonebook.
 $PbkPath = Join-Path $env:PROGRAMDATA 'Microsoft\Network\Connections\Pbk\rasphone.Pbk'
 
 # Update these variables with the actual VPN name, address, and PSK.
