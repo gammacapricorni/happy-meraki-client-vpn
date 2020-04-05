@@ -4,7 +4,8 @@
 #   Remove Requires - RunAsAdministrator
 #   Remove -AllUserConnection
 #   Change $env:PROGRAMDATA to $env:APPDATA
-#   Change $env:Public to "$env:Homepath"
+#   Change "$env:Public\Desktop\$ConnectionName.lnk" to [Environment]::GetFolderPath("Desktop") + "\$ConnectionName.link"
+#       [Environment]::GetFolderPath("Desktop") allows script to behave correctly on redirected desktops.
 
 #Requires -RunAsAdministrator
 
