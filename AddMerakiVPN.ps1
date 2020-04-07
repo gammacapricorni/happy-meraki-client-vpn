@@ -7,6 +7,8 @@ $ConnectionName = 'VPN name'
 $ServerAddress = 'pretend.host.com'
 $PresharedKey = 'fake PSK'
 $SingleUserConnection = $False
+$SplitTunnel = $true
+$RouteList = @('10.0.1.0/24', '10.1.0.0/16', '10.2.0.0/16')
 
 # Make appropriate changes for single user connections
 if ($SingleUserConnection) {
@@ -48,7 +50,7 @@ Add-VpnConnection -Name $ConnectionName -ServerAddress $ServerAddress -AllUserCo
 # Comment out for full tunnel.
 # Note: Some PCs get angry w/o a short rest to process Add-VPNConnection
 Start-Sleep -m 100
-Set-VpnConnection -Name $ConnectionName -SplitTunneling $True -AllUserConnection:$AllUserConnection -WA SilentlyContinue
+Set-VpnConnection -Name $ConnectionName -SplitTunneling:$SplitTunnel -AllUserConnection:$AllUserConnection -WA SilentlyContinue
 
 # If you need parameters to add metrics or for IPv6 subnets, open Powershell and run:
 # get-help add-vpnconnectionroute -full
@@ -59,13 +61,12 @@ Set-VpnConnection -Name $ConnectionName -SplitTunneling $True -AllUserConnection
 # $RouteList is an array of interesting subnet(s) with CIDR mask
 # Split tunnels must have at least one route.
 # Comment out for full tunnel.
-
-$RouteList = @('10.0.1.0/24', '10.1.0.0/16', '10.2.0.0/16')
-Foreach ($Destination in $RouteList)
-{
-    Add-Vpnconnectionroute -Connectionname $ConnectionName -AllUserConnection -DestinationPrefix $Destination
+if ($SplitTunnel) {
+    Foreach ($Destination in $RouteList)
+    {
+        Add-Vpnconnectionroute -Connectionname $ConnectionName -AllUserConnection:$AllUserConnection -DestinationPrefix $Destination
+    }
 }
-
 # Load the RASphone.pbk file into a line-by-line array
 $Phonebook = (Get-Content -path $PbkPath)
 
