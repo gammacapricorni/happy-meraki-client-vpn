@@ -7,6 +7,8 @@ $ConnectionName = 'VPN name'
 $ServerAddress = 'pretend.host.com'
 $PresharedKey = 'fake PSK'
 $SingleUserConnection = $false
+$dnsIp = ""
+$dnsSuffix = ""
 $SplitTunnel = $true
 $RouteList = @('10.0.1.0/24', '10.1.0.0/16', '10.2.0.0/16')
 
@@ -104,9 +106,20 @@ for($counter=$ConnectionIndex; $counter -lt $Phonebook.Length; $counter++){
     # Comment out if you don't want to try VPN-provided DNS first.
     elseif($Phonebook[$counter] -eq "IpInterfaceMetric=0"){
         $Phonebook[$counter] = "IpInterfaceMetric=1"
-        break
         # IpInterfaceMetric comes after UseRasCredentials, so break will cancel
         #   our loop once we're done with it.
+    }
+
+    if($Phonebook[$counter].StartsWith("IpDnsSuffix=") -and -not ([string]::IsNullOrEmpty($dnsSuffix))){
+        $Phonebook[$counter] = "IpDnsSuffix=$dnsSuffix"
+    }
+
+    if($Phonebook[$counter].StartsWith("IpDnsAddress=") -and -not ([string]::IsNullOrEmpty($dnsIp))){
+        $Phonebook[$counter] = "IpDnsAddress=$dnsIp"
+    }
+
+    if($Phonebook[$counter].StartsWith("IpNameAssign=1") -and -not ([string]::IsNullOrEmpty($dnsIp))){
+        $Phonebook[$counter] = "IpNameAssign=2"
     }
 }
 
