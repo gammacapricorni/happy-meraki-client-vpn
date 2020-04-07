@@ -1,25 +1,25 @@
 # Author: Nash King / @gammacapricorni
 # By default, this script creates an -AllUserConnection in the public phonebook
-# To make a single user connection, change "$SingleUserConnection" to "$false"
+# To make a single user connection, change "$SingleUserConnection" to "$true"
 
 # Update these variables with the actual VPN name, address, and PSK.
 $ConnectionName = 'VPN name'
 $ServerAddress = 'pretend.host.com'
 $PresharedKey = 'fake PSK'
-$SingleUserConnection = $False
+$SingleUserConnection = $false
 $SplitTunnel = $true
 $RouteList = @('10.0.1.0/24', '10.1.0.0/16', '10.2.0.0/16')
 
 # Make appropriate changes for single user connections
 if ($SingleUserConnection) {
-    $AllUserConnection = $true
-    $ProgramDataPath = $env:PROGRAMDATA
-    $ConnectionLinkPath = "$env:Public\Desktop\$ConnectionName.lnk"
-}
-else {
     $AllUserConnection = $false
     $ProgramDataPath = $env:APPDATA
     $ConnectionLinkPath = [Environment]::GetFolderPath("Desktop") + "\$ConnectionName.lnk"
+}
+else {
+    $AllUserConnection = $true
+    $ProgramDataPath = $env:PROGRAMDATA
+    $ConnectionLinkPath = "$env:Public\Desktop\$ConnectionName.lnk"
 }
 
 # Path for the phonebook.
