@@ -1,45 +1,58 @@
 # Author: Nash King / @gammacapricorni
 # By default, this script creates an -AllUserConnection in the public phonebook
-# To make a single user connection, find and replace:
-#   Remove -AllUserConnection
-#   Change $env:PROGRAMDATA to $env:APPDATA
-#   Change "$env:Public\Desktop\$ConnectionName.lnk" to [Environment]::GetFolderPath("Desktop") + "\$ConnectionName.link"
-#       [Environment]::GetFolderPath("Desktop") allows script to behave correctly on redirected desktops.
-
-# Path for the phonebook.
-$PbkPath = Join-Path $env:PROGRAMDATA 'Microsoft\Network\Connections\Pbk\rasphone.Pbk'
+# To make a single user connection, change "$SingleUserConnection" to "$true"
 
 # Update these variables with the actual VPN name, address, and PSK.
 $ConnectionName = 'VPN name'
 $ServerAddress = 'pretend.host.com'
 $PresharedKey = 'fake PSK'
+$SingleUserConnection = $false
+$dnsIp = ""
+$dnsSuffix = ""
+$SplitTunnel = $true
+$RouteList = @('10.0.1.0/24', '10.1.0.0/16', '10.2.0.0/16')
+
+# Make appropriate changes for single user connections
+if ($SingleUserConnection) {
+    $AllUserConnection = $false
+    $ProgramDataPath = $env:APPDATA
+    $ConnectionLinkPath = [Environment]::GetFolderPath("Desktop") + "\$ConnectionName.lnk"
+}
+else {
+    $AllUserConnection = $true
+    $ProgramDataPath = $env:PROGRAMDATA
+    $ConnectionLinkPath = "$env:Public\Desktop\$ConnectionName.lnk"
+}
+
+# Path for the phonebook.
+$PbkPath = Join-Path $ProgramDataPath 'Microsoft\Network\Connections\Pbk\rasphone.Pbk'
 
 # If no VPNs, rasphone.Pbk may not already exist.
 # If file does not exist, then create an empty placeholder.
 # Placeholder will be overwritten when new VPN is created.
 If ((Test-Path $PbkPath) -eq $false) {
-    $PbkFolder = Join-Path $env:PROGRAMDATA "Microsoft\Network\Connections\pbk\"
+    $PbkFolder = Join-Path $ProgramDataPath "Microsoft\Network\Connections\pbk\"
     if ((Test-Path $PbkFolder) -eq $true){
         New-Item -path $PbkFolder -name "rasphone.pbk" -ItemType "file" | Out-Null
     }
     else{
-        $ConnectionFolder = Join-Path $env:PROGRAMDATA "Microsoft\Network\Connections\"
+        $ConnectionFolder = Join-Path $ProgramDataPath "Microsoft\Network\Connections\"
         New-Item -path $ConnectionFolder -name "pbk" -ItemType "directory" | Out-Null
         New-Item -path $PbkFolder -name "rasphone.pbk" -ItemType "file" | Out-Null
     }
 }
 
 # If VPN exists, delete VPN connection so you can build fresh.
-Remove-VpnConnection -AllUserConnection -Name $ConnectionName -Force -EA SilentlyContinue
+Remove-VpnConnection -AllUserConnection:$AllUserConnection -Name $ConnectionName -Force -EA SilentlyContinue
 
 # Adds the new VPN connection.
-Add-VpnConnection -Name $ConnectionName -ServerAddress $ServerAddress -AllUserConnection -TunnelType L2tp -L2tpPsk $PresharedKey -AuthenticationMethod Pap -EncryptionLevel Optional -Force -WA SilentlyContinue
+Add-VpnConnection -Name $ConnectionName -ServerAddress $ServerAddress -AllUserConnection:$AllUserConnection -TunnelType L2tp -L2tpPsk $PresharedKey -AuthenticationMethod Pap -EncryptionLevel Optional -Force -WA SilentlyContinue
 
 # Sets the VPN connection to split tunnel.
 # Comment out for full tunnel.
 # Note: Some PCs get angry w/o a short rest to process Add-VPNConnection
 Start-Sleep -m 100
-Set-VpnConnection -Name $ConnectionName -SplitTunneling $True -AllUserConnection -WA SilentlyContinue
+Set-VpnConnection -Name $ConnectionName -SplitTunneling:$SplitTunnel -AllUserConnection:$AllUserConnection -WA SilentlyContinue
 
 # If you need parameters to add metrics or for IPv6 subnets, open Powershell and run:
 # get-help add-vpnconnectionroute -full
@@ -50,13 +63,12 @@ Set-VpnConnection -Name $ConnectionName -SplitTunneling $True -AllUserConnection
 # $RouteList is an array of interesting subnet(s) with CIDR mask
 # Split tunnels must have at least one route.
 # Comment out for full tunnel.
-
-$RouteList = @('10.0.1.0/24', '10.1.0.0/16', '10.2.0.0/16')
-Foreach ($Destination in $RouteList)
-{
-    Add-Vpnconnectionroute -Connectionname $ConnectionName -AllUserConnection -DestinationPrefix $Destination
+if ($SplitTunnel) {
+    Foreach ($Destination in $RouteList)
+    {
+        Add-Vpnconnectionroute -Connectionname $ConnectionName -AllUserConnection:$AllUserConnection -DestinationPrefix $Destination
+    }
 }
-
 # Load the RASphone.pbk file into a line-by-line array
 $Phonebook = (Get-Content -path $PbkPath)
 
@@ -94,9 +106,20 @@ for($counter=$ConnectionIndex; $counter -lt $Phonebook.Length; $counter++){
     # Comment out if you don't want to try VPN-provided DNS first.
     elseif($Phonebook[$counter] -eq "IpInterfaceMetric=0"){
         $Phonebook[$counter] = "IpInterfaceMetric=1"
-        break
         # IpInterfaceMetric comes after UseRasCredentials, so break will cancel
         #   our loop once we're done with it.
+    }
+
+    if($Phonebook[$counter].StartsWith("IpDnsSuffix=") -and -not ([string]::IsNullOrEmpty($dnsSuffix))){
+        $Phonebook[$counter] = "IpDnsSuffix=$dnsSuffix"
+    }
+
+    if($Phonebook[$counter].StartsWith("IpDnsAddress=") -and -not ([string]::IsNullOrEmpty($dnsIp))){
+        $Phonebook[$counter] = "IpDnsAddress=$dnsIp"
+    }
+
+    if($Phonebook[$counter].StartsWith("IpNameAssign=1") -and -not ([string]::IsNullOrEmpty($dnsIp))){
+        $Phonebook[$counter] = "IpNameAssign=2"
     }
 }
 
@@ -108,7 +131,7 @@ Set-Content -Path $PbkPath -Value $Phonebook
 # Avoids Windows 10 overlay problems such as showing "Connecting..." even
 # after a successful connection.
 
-$ShortcutFile = "$env:Public\Desktop\$ConnectionName.lnk"
+$ShortcutFile = "$ConnectionLinkPath"
 $WScriptShell = New-Object -ComObject WScript.Shell
 $Shortcut = $WScriptShell.CreateShortcut($ShortcutFile)
 $Shortcut.TargetPath = "rasphone.exe"
