@@ -114,6 +114,7 @@ $Shortcut = $WScriptShell.CreateShortcut($ShortcutFile)
 $Shortcut.TargetPath = "rasphone.exe"
 $Shortcut.Arguments = "-d `"$ConnectionName`""
 $ShortCut.WorkingDirectory = "$env:SystemRoot\System32\"
+$Shortcut.IconLocation = "$env:SystemRoot\system32\SHELL32.dll,47"
 $Shortcut.Save()
 
 # Prevent Windows 10 problem with NAT-Traversal (often on hotspots)
