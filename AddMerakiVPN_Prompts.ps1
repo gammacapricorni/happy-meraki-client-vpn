@@ -1,5 +1,6 @@
 # Author: Nash King / @gammacapricorni
 # By default, this script creates an -AllUserConnection in the public phonebook
+# This is due to specific needs of my primary customers.
 # To make a single user connection, do the following:
 #   Remove Requires - RunAsAdministrator
 #   Remove -AllUserConnection
