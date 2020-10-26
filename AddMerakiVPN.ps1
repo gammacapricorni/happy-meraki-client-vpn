@@ -1,5 +1,6 @@
 # Author: Nash King / @gammacapricorni
 # By default, this script creates an -AllUserConnection in the public phonebook
+# This is due to specific needs for my primary customers.
 # To make a single user connection, find and replace:
 #   Remove -AllUserConnection
 #   Change $env:PROGRAMDATA to $env:APPDATA
