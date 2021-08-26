@@ -11,9 +11,9 @@
 $PbkPath = Join-Path $env:PROGRAMDATA 'Microsoft\Network\Connections\Pbk\rasphone.Pbk'
 
 # Update these variables with the actual VPN name, address, and PSK.
-$ConnectionName = 'VPN name'
-$ServerAddress = 'pretend.host.com'
-$PresharedKey = 'fake PSK'
+$ConnectionName = 'Crimson3'
+$ServerAddress = '71.67.198.27'
+$PresharedKey = 'Design!Work1!'
 
 # If no VPNs, rasphone.Pbk may not already exist.
 # If file does not exist, then create an empty placeholder.
